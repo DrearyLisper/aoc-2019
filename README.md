@@ -4,9 +4,9 @@
 
 See https://adventofcode.com/2019 for problems.
 
-## Day 1: Report Repair
+## Day 1: The Tyranny of the Rocket Equation
 
-[Full Solution](https://github.com/DrearyLisper/aoc-2020/tree/main/lib/01/day01.ex)
+[Full Solution](https://github.com/DrearyLisper/aoc-2019/tree/main/src/01/main.rkt)
 
 ``` bash
 aoc-2019$ racket src/01/main.rkt
