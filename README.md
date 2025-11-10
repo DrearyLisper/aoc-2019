@@ -23,3 +23,13 @@ aoc-2019$ racket src/02/main.rkt
 4090689
 7733
 ```
+
+## Day 3: Crossed Wires
+
+[Full Solution](https://github.com/DrearyLisper/aoc-2019/tree/main/src/03/main.rkt)
+
+``` bash
+aoc-2019$ racket src/03/main.rkt
+721
+7388
+```
