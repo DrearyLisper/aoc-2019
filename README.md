@@ -33,3 +33,13 @@ aoc-2019$ racket src/03/main.rkt
 721
 7388
 ```
+
+## Day 4: Secure Container
+
+[Full Solution](https://github.com/DrearyLisper/aoc-2019/tree/main/src/04/main.rkt)
+
+``` bash
+aoc-2019$ racket src/04/main.rkt
+1919
+1291
+```
