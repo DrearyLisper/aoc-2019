@@ -53,3 +53,13 @@ aoc-2019$ racket src/05/main.rkt
 7259358
 11826654
 ```
+
+## Day 6: Universal Orbit Map
+
+[Full Solution](https://github.com/DrearyLisper/aoc-2019/tree/main/src/06/main.rkt)
+
+``` bash
+aoc-2019$ racket src/06/main.rkt
+312697
+466
+```
