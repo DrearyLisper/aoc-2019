@@ -43,3 +43,13 @@ aoc-2019$ racket src/04/main.rkt
 1919
 1291
 ```
+
+## Day 5: Sunny with a Chance of Asteroids
+
+[Full Solution](https://github.com/DrearyLisper/aoc-2019/tree/main/src/05/main.rkt)
+
+``` bash
+aoc-2019$ racket src/05/main.rkt
+7259358
+11826654
+```

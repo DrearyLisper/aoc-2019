@@ -12,7 +12,7 @@
   (let* ((program (parse)))
     (vector-set! program 1 12)
     (vector-set! program 2 2)
-    (vector-ref (execute program 0) 0)))
+    (vector-ref (state-struct-program (execute program)) 0)))
 
 (define (part02 content)
   (define (parse)
@@ -24,7 +24,7 @@
           (begin
             (vector-set! program 1 i)
             (vector-set! program 2 j)
-            (list (vector-ref (execute program 0) 0) i j))))
+            (list (vector-ref (state-struct-program (execute program)) 0) i j))))
       (filter (lambda (l) (= (first l) 19690720)) _)
       (first)
       (match _
