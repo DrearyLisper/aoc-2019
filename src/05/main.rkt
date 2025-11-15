@@ -9,15 +9,17 @@
   (define (parse)
     (list->vector (map string->number (string-split (string-trim content) ","))))
 
-  (let* ((program (parse)))
-    (first (state-struct-output (execute-with-input program (list 1))))))
+  (let* ((program (parse))
+         (state (new-state-with-input program (list 1))))
+    (first (state-struct-output (execute state)))))
 
 (define (part02 content)
   (define (parse)
     (list->vector (map string->number (string-split (string-trim content) ","))))
 
-  (let* ((program (parse)))
-    (first (state-struct-output (execute-with-input program (list 5))))))
+  (let* ((program (parse))
+         (state (new-state-with-input program (list 5))))
+    (first (state-struct-output (execute state)))))
 
 (define (main)
   (let ((content (read-input "05")))

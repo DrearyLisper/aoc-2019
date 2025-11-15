@@ -1,6 +1,15 @@
 #lang racket
 
-(provide execute execute-with-input state-struct-program state-struct-output)
+(provide execute
+         execute-until-output
+         new-state
+         new-state-with-input
+         state-struct-program
+         state-struct-halted
+         set-state-struct-input!
+         state-struct-output
+         state-struct
+         copy-state)
 
 (require threading)
 (require racket/trace)
@@ -151,28 +160,41 @@
     (8 (opcode-struct equals (parse-args opcode 'equals) 4))
     (99 (opcode-struct halt (parse-args opcode 'halt) 1))))
 
-(define (execute program)
-  (define (execute-opcode state)
-    (let* ((opcode-raw (vector-ref (state-struct-program state) (state-struct-ip state)))
-           (opcode (parse-opcode opcode-raw)))
-      ((opcode-struct-f opcode) state opcode)))
+(define (execute-opcode state)
+  (let* ((opcode-raw (vector-ref (state-struct-program state) (state-struct-ip state)))
+         (opcode (parse-opcode opcode-raw)))
+    ((opcode-struct-f opcode) state opcode)))
 
+(define (new-state program)
+  (state-struct program 0 #f (list) (list)))
+
+(define (new-state-with-input program input)
+  (state-struct program 0 #f input (list)))
+
+(define (copy-list l)
+  (cond ((empty? l) '())
+        (#t (cons (first l) (copy-list (rest l))))))
+
+(define (copy-state state)
+  (state-struct
+   (vector-copy (state-struct-program state))
+   (state-struct-ip state)
+   (state-struct-halted state)
+   (copy-list (state-struct-input state))
+   (copy-list (state-struct-output state))))
+
+(define (execute state)
   (define (execute-impl state)
     (cond ((state-struct-halted state) state)
           (#t (execute-impl (execute-opcode state)))))
 
-  (let* ((state (state-struct program 0 #f (list) (list))))
-    (execute-impl state)))
+  (execute-impl state))
 
-(define (execute-with-input program input)
-  (define (execute-opcode state)
-    (let* ((opcode-raw (vector-ref (state-struct-program state) (state-struct-ip state)))
-           (opcode (parse-opcode opcode-raw)))
-      ((opcode-struct-f opcode) state opcode)))
-
+(define (execute-until-output state)
   (define (execute-impl state)
-    (cond ((state-struct-halted state) state)
+    (cond ((or (state-struct-halted state)
+               (not (empty? (state-struct-output state)))) state)
           (#t (execute-impl (execute-opcode state)))))
 
-  (let* ((state (state-struct program 0 #f input (list))))
-    (execute-impl state)))
+  (set-state-struct-output! state (list))
+  (execute-impl state))

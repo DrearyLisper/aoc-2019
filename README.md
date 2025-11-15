@@ -63,3 +63,14 @@ aoc-2019$ racket src/06/main.rkt
 312697
 466
 ```
+
+## Day 7: Amplification Circuit
+
+[Full Solution](https://github.com/DrearyLisper/aoc-2019/tree/main/src/07/main.rkt)
+
+``` bash
+aoc-2019$ racket src/07/main.rkt
+225056
+14260332
+```
+

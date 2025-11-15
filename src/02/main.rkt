@@ -9,10 +9,11 @@
   (define (parse)
     (list->vector (map string->number (string-split (string-trim content) ","))))
 
-  (let* ((program (parse)))
+  (let* ((program (parse))
+         (state (new-state program)))
     (vector-set! program 1 12)
     (vector-set! program 2 2)
-    (vector-ref (state-struct-program (execute program)) 0)))
+    (vector-ref (state-struct-program (execute state)) 0)))
 
 (define (part02 content)
   (define (parse)
@@ -20,11 +21,12 @@
 
   (~> (for*/list ((i (in-range 0 100))
                   (j (in-range 0 100)))
-        (let* ((program (parse)))
+        (let* ((program (parse))
+               (state (new-state program)))
           (begin
             (vector-set! program 1 i)
             (vector-set! program 2 j)
-            (list (vector-ref (state-struct-program (execute program)) 0) i j))))
+            (list (vector-ref (state-struct-program (execute state)) 0) i j))))
       (filter (lambda (l) (= (first l) 19690720)) _)
       (first)
       (match _
