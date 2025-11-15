@@ -89,3 +89,14 @@ aoc-2019$ racket src/08/main.rkt
 #### #    #### ###    #
 ```
 
+## Day 9: Space Image Format
+
+[Full Solution](https://github.com/DrearyLisper/aoc-2019/tree/main/src/09/main.rkt)
+
+``` bash
+aoc-2019$ racket src/09/main.rkt
+4234906522
+60962
+```
+
+

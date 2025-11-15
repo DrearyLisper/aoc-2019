@@ -9,13 +9,14 @@
          set-state-struct-input!
          state-struct-output
          state-struct
-         copy-state)
+         copy-state
+         get-output)
 
 (require threading)
 (require racket/trace)
 
 (struct opcode-struct (f args len) #:transparent)
-(struct state-struct (program ip halted input output) #:mutable #:transparent)
+(struct state-struct (program ip halted input output base memory) #:mutable)
 
 (define (sum state opcode)
   (match-let* ((program (state-struct-program state))
@@ -24,10 +25,9 @@
                (a (vector-ref program (+ ip 1)))
                (b (vector-ref program (+ ip 2)))
                (o (vector-ref program (+ ip 3))))
-    (vector-set! program
-                 (arg-c program o)
-                 (+ (arg-a program a)
-                    (arg-b program b)))
+    (write state (arg-c state o)
+                 (+ (arg-a state a)
+                    (arg-b state b)))
     (set-state-struct-ip! state (+ ip (opcode-struct-len opcode)))
     state))
 
@@ -38,10 +38,9 @@
                (a (vector-ref program (+ ip 1)))
                (b (vector-ref program (+ ip 2)))
                (o (vector-ref program (+ ip 3))))
-    (vector-set! program
-                 (arg-c program o)
-                 (* (arg-a program a)
-                    (arg-b program b)))
+    (write state (arg-c state o)
+                 (* (arg-a state a)
+                    (arg-b state b)))
     (set-state-struct-ip! state (+ ip (opcode-struct-len opcode)))
     state))
 
@@ -56,7 +55,7 @@
                (ip (state-struct-ip state))
                ((list arg-a) (opcode-struct-args opcode))
                (a (vector-ref program (+ ip 1))))
-    (vector-set! program (arg-a program a) (first input))
+    (write state (arg-a state a) (first input))
     (set-state-struct-input! state (rest input))
     (set-state-struct-ip! state (+ ip (opcode-struct-len opcode)))
     state))
@@ -67,7 +66,7 @@
                (ip (state-struct-ip state))
                ((list arg-a) (opcode-struct-args opcode))
                (a (vector-ref program (+ ip 1))))
-    (set-state-struct-output! state (cons (arg-a program a) output))
+    (set-state-struct-output! state (cons (arg-a state a) output))
     (set-state-struct-ip! state (+ ip (opcode-struct-len opcode)))
     state))
 
@@ -78,8 +77,8 @@
                ((list arg-a arg-b) (opcode-struct-args opcode))
                (a (vector-ref program (+ ip 1)))
                (b (vector-ref program (+ ip 2))))
-    (if (not (equal? (arg-a program a) 0))
-        (set-state-struct-ip! state (arg-b program b))
+    (if (not (equal? (arg-a state a) 0))
+        (set-state-struct-ip! state (arg-b state b))
         (set-state-struct-ip! state (+ ip (opcode-struct-len opcode))))
     state))
 
@@ -90,8 +89,8 @@
                ((list arg-a arg-b) (opcode-struct-args opcode))
                (a (vector-ref program (+ ip 1)))
                (b (vector-ref program (+ ip 2))))
-    (if (equal? (arg-a program a) 0)
-        (set-state-struct-ip! state (arg-b program b))
+    (if (equal? (arg-a state a) 0)
+        (set-state-struct-ip! state (arg-b state b))
         (set-state-struct-ip! state (+ ip (opcode-struct-len opcode))))
     state))
 
@@ -104,9 +103,9 @@
                (b (vector-ref program (+ ip 2)))
                (c (vector-ref program (+ ip 3))))
 
-    (if (< (arg-a program a) (arg-b program b))
-        (vector-set! program (arg-c program c) 1)
-        (vector-set! program (arg-c program c) 0))
+    (if (< (arg-a state a) (arg-b state b))
+        (write state (arg-c state c) 1)
+        (write state (arg-c state c) 0))
     (set-state-struct-ip! state (+ ip (opcode-struct-len opcode)))
     state))
 
@@ -119,17 +118,45 @@
                (b (vector-ref program (+ ip 2)))
                (c (vector-ref program (+ ip 3))))
 
-    (if (equal? (arg-a program a) (arg-b program b))
-        (vector-set! program (arg-c program c) 1)
-        (vector-set! program (arg-c program c) 0))
+    (if (equal? (arg-a state a) (arg-b state b))
+        (write state (arg-c state c) 1)
+        (write state (arg-c state c) 0))
     (set-state-struct-ip! state (+ ip (opcode-struct-len opcode)))
     state))
 
+(define (base state opcode)
+  (match-let* ((program (state-struct-program state))
+               (ip (state-struct-ip state))
+               ((list arg-a) (opcode-struct-args opcode))
+               (a (vector-ref program (+ ip 1))))
+    (set-state-struct-base! state (+ (state-struct-base state) (arg-a state a)))
+    (set-state-struct-ip! state (+ ip (opcode-struct-len opcode)))
+    state))
+
+(define (read state addr)
+  (let* ((program (state-struct-program state))
+         (memory (state-struct-memory state)))
+    (if (< addr (vector-length program))
+        (vector-ref program addr)
+        (hash-ref! memory addr 0))))
+
+(define (write state addr v)
+  (let* ((program (state-struct-program state))
+         (memory (state-struct-memory state)))
+    (if (< addr (vector-length program))
+        (vector-set! program addr v)
+        (hash-set! memory addr v))))
+
 (define (parse-args opcode type)
+
   (define (select-mode mode)
     (match mode
-      (0 (lambda (program addr) (vector-ref program addr)))
-      (1 (lambda (program addr) addr))))
+      (0 (lambda (state addr) (read state addr)))
+      (1 (lambda (state addr) addr))
+      (2 (lambda (state addr) (read state
+                                    (+ addr (state-struct-base state)))))
+      (3 (lambda (state addr) (+ addr (state-struct-base state))))))
+
 
   (define (mode-for-position position)
     (match position
@@ -138,15 +165,27 @@
       (2 (remainder (quotient opcode 10000) 10))))
 
   (match type
-    ('sum (map select-mode (list (mode-for-position 0) (mode-for-position 1) 1)))
-    ('prod (map select-mode (list (mode-for-position 0) (mode-for-position 1) 1)))
+    ('sum (map select-mode (list
+                            (mode-for-position 0)
+                            (mode-for-position 1)
+                            (+ 1 (mode-for-position 2)))))
+    ('prod (map select-mode (list (mode-for-position 0)
+                                  (mode-for-position 1)
+                                  (+ 1 (mode-for-position 2)))))
     ('halt (list))
-    ('input (map select-mode (list 1)))
+    ('input (map select-mode (list (+ 1 (mode-for-position 0)))))
     ('output (map select-mode (list (mode-for-position 0))))
     ('jump-if-true (map select-mode (list (mode-for-position 0) (mode-for-position 1))))
     ('jump-if-false (map select-mode (list (mode-for-position 0) (mode-for-position 1))))
-    ('less-than (map select-mode (list (mode-for-position 0) (mode-for-position 1) 1)))
-    ('equals (map select-mode (list (mode-for-position 0) (mode-for-position 1) 1)))))
+    ('less-than (map select-mode (list
+                                  (mode-for-position 0)
+                                  (mode-for-position 1)
+                                  (+ 1 (mode-for-position 2)))))
+    ('equals (map select-mode (list
+                               (mode-for-position 0)
+                               (mode-for-position 1)
+                               (+ 1 (mode-for-position 2)))))
+    ('base (map select-mode (list (mode-for-position 0))))))
 
 (define (parse-opcode opcode)
   (match (remainder opcode 100)
@@ -158,6 +197,7 @@
     (6 (opcode-struct jump-if-false (parse-args opcode 'jump-if-false) 3))
     (7 (opcode-struct less-than (parse-args opcode 'less-than) 4))
     (8 (opcode-struct equals (parse-args opcode 'equals) 4))
+    (9 (opcode-struct base (parse-args opcode 'base) 2))
     (99 (opcode-struct halt (parse-args opcode 'halt) 1))))
 
 (define (execute-opcode state)
@@ -166,10 +206,10 @@
     ((opcode-struct-f opcode) state opcode)))
 
 (define (new-state program)
-  (state-struct program 0 #f (list) (list)))
+  (state-struct program 0 #f (list) (list) 0 (make-hash)))
 
 (define (new-state-with-input program input)
-  (state-struct program 0 #f input (list)))
+  (state-struct program 0 #f input (list) 0 (make-hash)))
 
 (define (copy-list l)
   (cond ((empty? l) '())
@@ -181,7 +221,12 @@
    (state-struct-ip state)
    (state-struct-halted state)
    (copy-list (state-struct-input state))
-   (copy-list (state-struct-output state))))
+   (copy-list (state-struct-output state))
+   (state-struct-base state)
+   (hash-copy (state-struct-memory state))))
+
+(define (get-output state)
+  (reverse (state-struct-output state)))
 
 (define (execute state)
   (define (execute-impl state)
